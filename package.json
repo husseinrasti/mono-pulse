@@ -24,6 +24,9 @@
   },
   "homepage": "https://github.com/your-org/monopulse#readme",
   "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
