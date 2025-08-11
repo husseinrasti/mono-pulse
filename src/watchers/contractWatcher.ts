@@ -19,8 +19,9 @@ export const watchContractData = async (
   const map: Record<string, unknown> = {};
   for (let i = 0; i < functionNames.length; i++) {
     const name = functionNames[i];
+    if (!name) continue;
     const res = results[i];
-    map[name] = res?.success ? res.result : null;
+    map[name] = res && res.success ? res.result : null;
   }
   onUpdate(map);
 

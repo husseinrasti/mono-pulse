@@ -27,7 +27,7 @@ export const watchBalances = async (
 
   const initialCalls: MulticallCall[] = tokenAddresses.map((token) => ({
     address: token,
-    abi: ERC20_ABI as const,
+    abi: ERC20_ABI,
     functionName: "balanceOf",
     args: [address],
   }));
@@ -40,8 +40,9 @@ export const watchBalances = async (
   const tokens: Record<Address, bigint> = {};
   for (let i = 0; i < tokenAddresses.length; i++) {
     const token = tokenAddresses[i];
+    if (!token) continue;
     const res = tokenResults[i];
-    tokens[token] = res?.success ? (res.result as bigint) : 0n;
+    tokens[token] = res && res.success ? ((res.result as bigint) ?? 0n) : 0n;
   }
 
   onUpdate({ native, tokens });

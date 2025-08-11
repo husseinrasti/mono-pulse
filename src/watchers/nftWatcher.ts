@@ -20,14 +20,18 @@ export const watchNFTs = async (
   const fetcher = new DataFetcher(client);
   const calls: MulticallCall[] = contracts.map((c) => ({
     address: c,
-    abi: ERC721_ABI as const,
+    abi: ERC721_ABI,
     functionName: "balanceOf",
     args: [owner],
   }));
   const results = await fetcher.fetchMany<bigint>(calls, { allowFailure: true });
   const map: Record<Address, bigint> = {} as Record<Address, bigint>;
-  for (let i = 0; i < contracts.length; i++)
-    map[contracts[i]] = results[i]?.success ? (results[i].result as bigint) : 0n;
+  for (let i = 0; i < contracts.length; i++) {
+    const contract = contracts[i];
+    if (!contract) continue;
+    const res = results[i];
+    map[contract] = res && res.success ? ((res.result as bigint) ?? 0n) : 0n;
+  }
   onUpdate(map);
 
   const stop: WatcherStopFn = () => {};

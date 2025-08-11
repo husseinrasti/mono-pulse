@@ -22,7 +22,7 @@ export class WsProvider implements EventProvider {
 
   constructor(private readonly url: string) {
     this.ws = new WebSocket(url);
-    this.ws.on("message", (raw) => this.handleMessage(String(raw)));
+    this.ws.on("message", (raw: WebSocket.RawData) => this.handleMessage(String(raw)));
   }
 
   private send(method: string, params: unknown[]): number {
