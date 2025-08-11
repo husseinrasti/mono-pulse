@@ -64,4 +64,111 @@ describe("watchers (MVP)", () => {
     expect(first.blockNumber).toBe(999n);
     stop();
   });
+
+  test("watchBlockStats polls and stops correctly", async () => {
+    class TestClient extends MockRpcClient {
+      private current: bigint = 1n;
+      async getBlockNumber(): Promise<bigint> {
+        return this.current;
+      }
+      bump() {
+        this.current += 1n;
+      }
+    }
+    const client = new TestClient();
+    const updates: Array<{ blockNumber: bigint }> = [];
+    const stop = await watchBlockStats(client, (s) => updates.push(s), { pollIntervalMs: 20 });
+    expect(updates.length).toBe(1);
+    client.bump();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(updates.length).toBeGreaterThanOrEqual(2);
+    stop();
+    const len = updates.length;
+    client.bump();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(updates.length).toBe(len);
+  });
+
+  test("watchBalances refreshes on new block and stops correctly", async () => {
+    class TestClient extends MockRpcClient {
+      private bn: bigint = 1n;
+      async getBlockNumber(): Promise<bigint> {
+        return this.bn;
+      }
+      bump() {
+        this.bn += 1n;
+      }
+    }
+    const client = new TestClient({ nativeBalance: 10n });
+    const updates: any[] = [];
+    const stop = await watchBalances(client, ZERO, [ZERO], (b) => updates.push(b), {
+      pollIntervalMs: 20,
+    });
+    expect(updates.length).toBe(1);
+    client.bump();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(updates.length).toBeGreaterThanOrEqual(2);
+    stop();
+    const len = updates.length;
+    client.bump();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(updates.length).toBe(len);
+  });
+
+  test("watchContractData refreshes on new block and stops correctly", async () => {
+    class TestClient extends MockRpcClient {
+      private bn: bigint = 1n;
+      async getBlockNumber(): Promise<bigint> {
+        return this.bn;
+      }
+      bump() {
+        this.bn += 1n;
+      }
+    }
+    const client = new TestClient({ readContractResult: 123n });
+    const updates: any[] = [];
+    const stop = await watchContractData(
+      client,
+      ZERO,
+      [],
+      ["totalSupply"],
+      (d) => updates.push(d),
+      { pollIntervalMs: 20 },
+    );
+    expect(updates.length).toBe(1);
+    client.bump();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(updates.length).toBeGreaterThanOrEqual(2);
+    stop();
+    const len = updates.length;
+    client.bump();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(updates.length).toBe(len);
+  });
+
+  test("watchNFTs refreshes on new block and stops correctly", async () => {
+    class TestClient extends MockRpcClient {
+      private bn: bigint = 1n;
+      async getBlockNumber(): Promise<bigint> {
+        return this.bn;
+      }
+      bump() {
+        this.bn += 1n;
+      }
+    }
+    const client = new TestClient();
+    const updates: any[] = [];
+    const stop = await watchNFTs(client, ZERO, [ZERO], (d) => updates.push(d), {
+      pollIntervalMs: 20,
+    });
+    expect(updates.length).toBe(1);
+    client.bump();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(updates.length).toBeGreaterThanOrEqual(2);
+    stop();
+    const len = updates.length;
+    client.bump();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(updates.length).toBe(len);
+  });
 });

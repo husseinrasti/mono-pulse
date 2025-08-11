@@ -5,7 +5,11 @@ export const watchTransactions = async (
   _address: Address,
   _onUpdate: (txs: readonly Hex[]) => void,
 ): Promise<WatcherStopFn> => {
-  // Placeholder: real implementation will wire provider events and fetch details
-  const stop: WatcherStopFn = () => {};
+  // Placeholder for MVP
+  let stopped = false;
+  const stop: WatcherStopFn = () => {
+    stopped = true;
+  };
+  void stopped; // silence unused for MVP
   return stop;
 };

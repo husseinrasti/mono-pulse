@@ -5,6 +5,11 @@ export const watchPendingTxs = async (
   _addressOrContract: Address,
   _onUpdate: (pending: readonly Hex[]) => void,
 ): Promise<WatcherStopFn> => {
-  const stop: WatcherStopFn = () => {};
+  // Placeholder: wire to provider pending tx stream in future
+  let stopped = false;
+  const stop: WatcherStopFn = () => {
+    stopped = true;
+  };
+  void stopped; // silence unused for MVP
   return stop;
 };

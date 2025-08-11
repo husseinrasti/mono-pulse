@@ -15,7 +15,7 @@ async function main() {
   const stop = await sdk.watchBalances(
     userAddress,
     [
-      // put ERC20 token addresses here
+      "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea", // USDC
     ],
     (balances) => {
       console.log("Updated balances:", balances);
