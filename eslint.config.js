@@ -5,9 +5,12 @@ import pluginUnused from "eslint-plugin-unused-imports";
 import prettier from "eslint-config-prettier";
 
 export default [
+  // Global ignores to avoid linting build output and coverage reports
+  {
+    ignores: ["dist/**", "coverage/**", "node_modules/**"],
+  },
   {
     files: ["**/*.{ts,tsx,js,jsx}", "**/*.cjs", "**/*.mjs"],
-    ignores: ["dist/**", "node_modules/**"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
@@ -27,6 +30,13 @@ export default [
           alphabetize: { order: "asc", caseInsensitive: true },
         },
       ],
+    },
+  },
+  // Ensure TypeScript-only rules do not apply to plain JS files
+  {
+    files: ["**/*.{js,jsx,mjs,cjs}"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": "off",
     },
   },
   ...tseslint.configs.recommended,

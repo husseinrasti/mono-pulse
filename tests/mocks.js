@@ -8,13 +8,13 @@ export class MockRpcClient {
   async getBlockNumber() {
     return this.options.blockNumber ?? 123n;
   }
-  async getNativeBalance(_address) {
+  async getNativeBalance() {
     return this.options.nativeBalance ?? 42n;
   }
-  async readContract(_call) {
+  async readContract() {
     return this.options.readContractResult ?? 1;
   }
-  async multicall(calls, _opts) {
+  async multicall(calls) {
     if (this.options.multicallResults) {
       return this.options.multicallResults;
     }

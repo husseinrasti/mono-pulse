@@ -1,8 +1,6 @@
 import { watchBalances } from "../src/watchers/balancesWatcher";
 import { watchContractData } from "../src/watchers/contractWatcher";
 import { watchNFTs } from "../src/watchers/nftWatcher";
-import { watchTransactions } from "../src/watchers/transactionsWatcher";
-import { watchPendingTxs } from "../src/watchers/pendingTxWatcher";
 import { watchBlockStats } from "../src/watchers/blockStatsWatcher";
 import type { Address } from "../src/utils/types";
 import { MockRpcClient } from "./mocks.js";
@@ -34,24 +32,6 @@ describe("watchers (MVP)", () => {
     const stop = await watchNFTs(client, ZERO, [ZERO], (d) => updates.push(d));
     expect(updates.length).toBe(1);
     expect(Object.keys(updates[0] as object).length).toBe(1);
-    stop();
-  });
-
-  test("watchTransactions returns a stop function and does not emit initially (MVP)", async () => {
-    const client = new MockRpcClient();
-    const updates: unknown[] = [];
-    const stop = await watchTransactions(client, ZERO, (txs) => updates.push(txs));
-    expect(typeof stop).toBe("function");
-    expect(updates.length).toBe(0);
-    stop();
-  });
-
-  test("watchPendingTxs returns a stop function and does not emit initially (MVP)", async () => {
-    const client = new MockRpcClient();
-    const updates: unknown[] = [];
-    const stop = await watchPendingTxs(client, ZERO, (txs) => updates.push(txs));
-    expect(typeof stop).toBe("function");
-    expect(updates.length).toBe(0);
     stop();
   });
 

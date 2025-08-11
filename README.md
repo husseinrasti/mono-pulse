@@ -161,28 +161,6 @@ const stop = await sdk.watchNFTs(
 );
 ```
 
-### sdk.watchTransactions(address, onUpdate)
-
-- **address**: the address to observe
-- **onUpdate**: `(txHashes: readonly Hex[]) => void`
-
-Example:
-
-```ts
-const stop = await sdk.watchTransactions("0xUser…", (txs) => console.log("New txs", txs));
-```
-
-### sdk.watchPendingTxs(addressOrContract, onUpdate)
-
-- **addressOrContract**: address to filter by
-- **onUpdate**: `(pending: readonly Hex[]) => void`
-
-Example:
-
-```ts
-const stop = await sdk.watchPendingTxs("0xContract…", (pending) => console.log(pending));
-```
-
 ### sdk.watchBlockStats(onUpdate)
 
 - **onUpdate**: `(stats: { blockNumber: bigint }) => void`
@@ -237,8 +215,6 @@ See the `examples/` directory for runnable scripts:
 - `examples/watchBalances.ts`
 - `examples/watchContractData.ts`
 - `examples/watchNFTs.ts`
-- `examples/watchTransactions.ts`
-- `examples/watchPendingTxs.ts`
 - `examples/watchBlockStats.ts`
 
 Run with:
