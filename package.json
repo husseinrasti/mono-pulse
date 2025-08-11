@@ -1,12 +1,83 @@
 {
-  "name": "mono-pulse-sdk",
+  "name": "monopulse",
   "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
+  "description": "MonoPulse SDK: Real-time Monad data with smart batching and multicall",
+  "keywords": [
+    "monad",
+    "sdk",
+    "web3",
+    "multicall",
+    "realtime"
+  ],
   "author": "",
-  "license": "ISC",
-  "description": ""
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com:your-org/monopulse.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/monopulse/issues"
+  },
+  "homepage": "https://github.com/your-org/monopulse#readme",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "rimraf dist && tsc -p tsconfig.build.json",
+    "dev": "tsc -w -p tsconfig.json",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.2.1",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "eslint": "^9.33.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-unused-imports": "^4.1.4",
+    "husky": "^9.1.7",
+    "jest": "^30.0.5",
+    "lint-staged": "^16.1.5",
+    "prettier": "^3.6.2",
+    "rimraf": "^6.0.1",
+    "ts-jest": "^29.4.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.39.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,md}": [
+      "prettier --write"
+    ],
+    "src/**/*.{ts,tsx}": [
+      "eslint --fix"
+    ]
+  },
+  "dependencies": {
+    "abitype": "^1.0.8",
+    "dotenv": "^17.2.1",
+    "viem": "^2.33.3",
+    "ws": "^8.18.3"
+  }
 }
