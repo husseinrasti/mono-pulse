@@ -24,7 +24,17 @@ async function main() {
       inputs: [],
       outputs: [{ name: "", type: "string" }],
     },
+    {
+      type: "function",
+      name: "balanceOf",
+      stateMutability: "view",
+      inputs: [{ name: "account", type: "address" }],
+      outputs: [{ name: "", type: "uint256" }],
+    },
   ] as const;
+  const userAddress = process.env.USER_ADDRESS as `0x${string}`;
+  console.log("User address:", userAddress);
+  if (!userAddress) throw new Error("USER_ADDRESS is required (set it in .env or .env.local)");
   const contractAddress = process.env.CONTRACT_ADDRESS as `0x${string}`;
   console.log("Contract address:", contractAddress);
   if (!contractAddress)
@@ -32,7 +42,7 @@ async function main() {
   const stop = await sdk.watchContractData(
     contractAddress,
     abi,
-    ["totalSupply", "symbol"],
+    ["totalSupply", "symbol", { functionName: "balanceOf", args: [userAddress] }],
     (data) => {
       console.log("Contract data updated:", data);
     },

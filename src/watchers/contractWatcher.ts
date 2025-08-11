@@ -1,11 +1,13 @@
 import { DataFetcher } from "../core/dataFetcher.js";
 import type { MulticallCall, RpcClient, WatcherStopFn } from "../utils/types.js";
 
+type ContractCallDescriptor = { functionName: string; args?: readonly unknown[] };
+
 export const watchContractData = async (
   client: RpcClient,
   contractAddress: `0x${string}`,
   abi: readonly unknown[],
-  functionNames: string[],
+  functions: (string | ContractCallDescriptor)[],
   onUpdate: (data: Record<string, unknown>) => void,
   options?: { pollIntervalMs?: number },
 ): Promise<WatcherStopFn> => {
@@ -13,15 +15,22 @@ export const watchContractData = async (
   const pollIntervalMs = options?.pollIntervalMs ?? 5_000;
 
   const fetchAll = async () => {
-    const calls: MulticallCall[] = functionNames.map((fn) => ({
-      address: contractAddress,
-      abi,
-      functionName: fn,
-    }));
+    const calls: MulticallCall[] = functions.map((fn) => {
+      if (typeof fn === "string") {
+        return { address: contractAddress, abi, functionName: fn } satisfies MulticallCall;
+      }
+      return {
+        address: contractAddress,
+        abi,
+        functionName: fn.functionName,
+        args: fn.args ?? [],
+      } satisfies MulticallCall;
+    });
     const results = await fetcher.fetchMany(calls, { allowFailure: true });
     const map: Record<string, unknown> = {};
-    for (let i = 0; i < functionNames.length; i++) {
-      const name = functionNames[i];
+    for (let i = 0; i < functions.length; i++) {
+      const entry = functions[i]!;
+      const name = typeof entry === "string" ? entry : entry.functionName;
       if (!name) continue;
       const res = results[i];
       map[name] = res && res.success ? res.result : null;

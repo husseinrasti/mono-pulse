@@ -41,7 +41,7 @@ export class MonoPulse {
   async watchContractData(
     address: Address,
     abi: readonly unknown[],
-    functions: string[],
+    functions: (string | { functionName: string; args?: readonly unknown[] })[],
     onUpdate: (data: Record<string, unknown>) => void,
   ): Promise<WatcherStopFn> {
     return watchContractData(this.rpc, address, abi, functions, onUpdate);
