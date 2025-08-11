@@ -4,6 +4,7 @@ const config: Config = {
   preset: "ts-jest/presets/default-esm",
   testEnvironment: "node",
   roots: ["<rootDir>/tests"],
+  testMatch: ["**/?(*.)+(test|spec).ts"],
   moduleFileExtensions: ["ts", "tsx", "js", "mjs", "cjs"],
   transform: {
     "^.+\\.(ts|tsx)$": [

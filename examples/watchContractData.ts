@@ -25,9 +25,12 @@ async function main() {
       outputs: [{ name: "", type: "string" }],
     },
   ] as const;
+  const contractAddress = process.env.CONTRACT_ADDRESS as `0x${string}`;
+  console.log("Contract address:", contractAddress);
+  if (!contractAddress)
+    throw new Error("CONTRACT_ADDRESS is required (set it in .env or .env.local)");
   const stop = await sdk.watchContractData(
-    (process.env.CONTRACT_ADDRESS as `0x${string}`) ??
-      ("0x0000000000000000000000000000000000000000" as const),
+    contractAddress,
     abi,
     ["totalSupply", "symbol"],
     (data) => {

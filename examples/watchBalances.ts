@@ -9,9 +9,11 @@ async function main() {
   if (!rpcUrl) throw new Error("RPC_URL is required (set it in .env or .env.local)");
 
   const sdk = new MonoPulse({ provider: "ws", rpcUrl });
+  const userAddress = process.env.USER_ADDRESS as `0x${string}`;
+  console.log("User address:", userAddress);
+  if (!userAddress) throw new Error("USER_ADDRESS is required (set it in .env or .env.local)");
   const stop = await sdk.watchBalances(
-    (process.env.USER_ADDRESS as `0x${string}`) ??
-      ("0x0000000000000000000000000000000000000000" as const),
+    userAddress,
     [
       // put ERC20 token addresses here
     ],
