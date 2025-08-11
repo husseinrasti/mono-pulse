@@ -64,3 +64,4 @@ coverage
 PRD.md
 Prompt.md
 .cursor/**
+.cursor/

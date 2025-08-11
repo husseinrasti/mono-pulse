@@ -67,12 +67,14 @@ const sdk = new MonoPulse(options);
 ## API Reference
 
 All watcher methods return a function `() => void` to stop the subscription.
+All watchers also accept an optional options object `{ pollIntervalMs?: number }` to control how frequently new blocks are polled when provider streaming is unavailable.
 
 ### sdk.watchBalances(address, tokens, onUpdate)
 
 - **address**: `0x…` user address
 - **tokens**: `Address[]` list of ERC20 token addresses
 - **onUpdate**: `(balances) => void`
+- **options** (optional): `{ pollIntervalMs?: number }`
 
 Types:
 
@@ -86,17 +88,24 @@ type Balances = {
 Example:
 
 ```ts
-const stop = await sdk.watchBalances("0x1234...abcd", ["0xTokenAddr1", "0xTokenAddr2"], (b) =>
-  console.log(b.native, b.tokens),
+const stop = await sdk.watchBalances(
+  "0x1234...abcd",
+  ["0xTokenAddr1", "0xTokenAddr2"],
+  (b) => console.log(b.native, b.tokens),
+  { pollIntervalMs: 5000 },
 );
 ```
 
-### sdk.watchContractData(address, abi, functionNames, onUpdate)
+### sdk.watchContractData(address, abi, functions, onUpdate)
 
 - **address**: contract address
 - **abi**: readonly ABI array
-- **functionNames**: names of view functions to read
+- **functions**: array of function names or descriptors with arguments.
+- Supported forms:
+  - `"totalSupply"`
+  - `{ functionName: "balanceOf", args: ["0xUserAddress"] }`
 - **onUpdate**: `(data: Record<string, unknown>) => void`
+- **options** (optional): `{ pollIntervalMs?: number }`
 
 Example:
 
@@ -116,10 +125,21 @@ const abi = [
     inputs: [],
     outputs: [{ name: "", type: "string" }],
   },
+  {
+    type: "function",
+    name: "balanceOf",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
 ] as const;
-
-const stop = await sdk.watchContractData("0xContract…", abi, ["totalSupply", "symbol"], (data) =>
-  console.log(data.totalSupply, data.symbol),
+const userAddress = "0xUser…" as const;
+const stop = await sdk.watchContractData(
+  "0xContract…",
+  abi,
+  ["totalSupply", "symbol", { functionName: "balanceOf", args: [userAddress] }],
+  (data) => console.log(data.totalSupply, data.symbol, data.balanceOf),
+  { pollIntervalMs: 5000 },
 );
 ```
 
@@ -128,12 +148,16 @@ const stop = await sdk.watchContractData("0xContract…", abi, ["totalSupply", "
 - **owner**: user address
 - **contracts**: ERC721/1155 contract addresses
 - **onUpdate**: `(nfts: Record<Address, bigint>) => void`
+- **options** (optional): `{ pollIntervalMs?: number }`
 
 Example:
 
 ```ts
-const stop = await sdk.watchNFTs("0xUser…", ["0xNftContract1", "0xNftContract2"], (nfts) =>
-  console.log(nfts),
+const stop = await sdk.watchNFTs(
+  "0xUser…",
+  ["0xNftContract1", "0xNftContract2"],
+  (nfts) => console.log(nfts),
+  { pollIntervalMs: 7500 },
 );
 ```
 
@@ -162,11 +186,14 @@ const stop = await sdk.watchPendingTxs("0xContract…", (pending) => console.log
 ### sdk.watchBlockStats(onUpdate)
 
 - **onUpdate**: `(stats: { blockNumber: bigint }) => void`
+- **options** (optional): `{ pollIntervalMs?: number }`
 
 Example:
 
 ```ts
-const stop = await sdk.watchBlockStats((stats) => console.log(stats.blockNumber));
+const stop = await sdk.watchBlockStats((stats) => console.log(stats.blockNumber), {
+  pollIntervalMs: 5000,
+});
 ```
 
 ## Providers
@@ -174,6 +201,7 @@ const stop = await sdk.watchBlockStats((stats) => console.log(stats.blockNumber)
 MonoPulse supports multiple event/stream providers. Use `provider: 'auto'` to let MonoPulse choose or pick one explicitly.
 
 > Note: In the current MVP, `ws` is the primary provider. Integrations for Allium, Goldsky, and QuickNode are planned; the SDK interface is stable so you can switch providers later without changing watcher code.
+> Realtime updates today are delivered via efficient polling keyed to `getBlockNumber()` changes, with timers fully cleaned up on `stop()`. Provider-native streaming will be added in future updates where available.
 
 ### WebSocket RPC (ws)
 
