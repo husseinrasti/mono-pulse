@@ -18,7 +18,10 @@ export class MonoPulse {
 
   constructor(private readonly options: MonoPulseOptions) {
     this.logger = new Logger(options.logger?.level ?? "info");
-    this.rpc = options.overrides?.rpcClient ?? new ViemRpcClient(options.rpcUrl ?? "");
+    if (!options.overrides?.rpcClient) {
+      if (!options.rpcUrl) throw new Error("rpcUrl is required to initialize MonoPulse");
+    }
+    this.rpc = options.overrides?.rpcClient ?? new ViemRpcClient(options.rpcUrl!);
     this.providers = new ProviderManager(options);
     this.fetcher = new DataFetcher(this.rpc);
   }

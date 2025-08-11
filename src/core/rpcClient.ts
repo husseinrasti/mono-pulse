@@ -1,4 +1,4 @@
-import { createPublicClient, http } from "viem";
+import { createPublicClient, http, webSocket } from "viem";
 
 import type { Address } from "../utils/types.js";
 import type {
@@ -12,7 +12,8 @@ export class ViemRpcClient implements RpcClient {
   private client: ReturnType<typeof createPublicClient>;
 
   constructor(rpcUrl: string) {
-    this.client = createPublicClient({ transport: http(rpcUrl) });
+    const isWs = rpcUrl.startsWith("ws://") || rpcUrl.startsWith("wss://");
+    this.client = createPublicClient({ transport: isWs ? webSocket(rpcUrl) : http(rpcUrl) });
   }
 
   async getChainId(): Promise<number> {
@@ -32,7 +33,7 @@ export class ViemRpcClient implements RpcClient {
     const result = await this.client.readContract({
       address,
       abi: abi as readonly unknown[],
-       
+
       functionName: functionName as unknown as string,
       args: (args ?? []) as readonly unknown[],
     });
