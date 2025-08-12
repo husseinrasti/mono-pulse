@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+
 import { MonoPulse } from "../src/index.js";
 
 async function main() {
@@ -10,7 +11,7 @@ async function main() {
 
   const sdk = new MonoPulse({ provider: "ws", rpcUrl });
   const userAddress = process.env.USER_ADDRESS as `0x${string}`;
-  console.log("User address:", userAddress);
+  console.warn("User address:", userAddress);
   if (!userAddress) throw new Error("USER_ADDRESS is required (set it in .env or .env.local)");
   const stop = await sdk.watchNFTs(
     userAddress,
@@ -18,7 +19,7 @@ async function main() {
       "0x1bBeB83F089253719D235Aa12754040Cd4214c6A", // NFT contracts here
     ],
     (nfts) => {
-      console.log("Updated NFTs:", nfts);
+      console.warn("Updated NFTs:", nfts);
     },
   );
 

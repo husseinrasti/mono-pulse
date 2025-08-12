@@ -1,8 +1,8 @@
 // @ts-check
-import tseslint from "typescript-eslint";
+import prettier from "eslint-config-prettier";
 import pluginImport from "eslint-plugin-import";
 import pluginUnused from "eslint-plugin-unused-imports";
-import prettier from "eslint-config-prettier";
+import tseslint from "typescript-eslint";
 
 export default [
   // Global ignores to avoid linting build output and coverage reports

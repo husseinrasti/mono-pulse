@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+
 import { MonoPulse } from "../src/index.js";
 
 async function main() {
@@ -10,7 +11,7 @@ async function main() {
 
   const sdk = new MonoPulse({ provider: "ws", rpcUrl });
   const stop = await sdk.watchBlockStats((stats) => {
-    console.log("Block stats:", stats);
+    console.warn("Block stats:", stats);
   });
 
   setTimeout(() => stop(), 30_000);

@@ -1,34 +1,34 @@
+import { MockRpcClient } from "./mocks.js";
+import type { Address } from "../src/utils/types";
 import { watchBalances } from "../src/watchers/balancesWatcher";
+import { watchBlockStats } from "../src/watchers/blockStatsWatcher";
 import { watchContractData } from "../src/watchers/contractWatcher";
 import { watchNFTs } from "../src/watchers/nftWatcher";
-import { watchBlockStats } from "../src/watchers/blockStatsWatcher";
-import type { Address } from "../src/utils/types";
-import { MockRpcClient } from "./mocks.js";
 
 const ZERO: Address = "0x0000000000000000000000000000000000000000";
 
 describe("watchers (MVP)", () => {
   test("watchBalances returns initial balances", async () => {
     const client = new MockRpcClient({ nativeBalance: 100n });
-    const updates: unknown[] = [];
+    const updates: Array<{ native: bigint; tokens: Record<Address, bigint> }> = [];
     const stop = await watchBalances(client, ZERO, [ZERO], (b) => updates.push(b));
     expect(updates.length).toBe(1);
-    expect((updates[0] as any).native).toBe(100n);
+    expect(updates[0].native).toBe(100n);
     stop();
   });
 
   test("watchContractData returns map of results", async () => {
     const client = new MockRpcClient({ readContractResult: 7n });
-    const updates: unknown[] = [];
+    const updates: Array<Record<string, unknown>> = [];
     const stop = await watchContractData(client, ZERO, [], ["totalSupply"], (d) => updates.push(d));
     expect(updates.length).toBe(1);
-    expect((updates[0] as any).totalSupply).toBeDefined();
+    expect(updates[0].totalSupply).toBeDefined();
     stop();
   });
 
   test("watchNFTs returns balances per contract", async () => {
     const client = new MockRpcClient();
-    const updates: unknown[] = [];
+    const updates: Array<Record<Address, bigint>> = [];
     const stop = await watchNFTs(client, ZERO, [ZERO], (d) => updates.push(d));
     expect(updates.length).toBe(1);
     expect(Object.keys(updates[0] as object).length).toBe(1);
@@ -80,7 +80,7 @@ describe("watchers (MVP)", () => {
       }
     }
     const client = new TestClient({ nativeBalance: 10n });
-    const updates: any[] = [];
+    const updates: Array<{ native: bigint; tokens: Record<Address, bigint> }> = [];
     const stop = await watchBalances(client, ZERO, [ZERO], (b) => updates.push(b), {
       pollIntervalMs: 20,
     });
@@ -106,7 +106,7 @@ describe("watchers (MVP)", () => {
       }
     }
     const client = new TestClient({ readContractResult: 123n });
-    const updates: any[] = [];
+    const updates: Array<Record<string, unknown>> = [];
     const stop = await watchContractData(
       client,
       ZERO,
@@ -137,7 +137,7 @@ describe("watchers (MVP)", () => {
       }
     }
     const client = new TestClient();
-    const updates: any[] = [];
+    const updates: Array<Record<Address, bigint>> = [];
     const stop = await watchNFTs(client, ZERO, [ZERO], (d) => updates.push(d), {
       pollIntervalMs: 20,
     });

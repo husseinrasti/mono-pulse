@@ -1,8 +1,8 @@
+import { MockRpcClient } from "./mocks.js";
 import { watchBalances } from "../src/watchers/balancesWatcher";
+import { watchBlockStats } from "../src/watchers/blockStatsWatcher";
 import { watchContractData } from "../src/watchers/contractWatcher";
 import { watchNFTs } from "../src/watchers/nftWatcher";
-import { watchBlockStats } from "../src/watchers/blockStatsWatcher";
-import { MockRpcClient } from "./mocks.js";
 const ZERO = "0x0000000000000000000000000000000000000000";
 describe("watchers (MVP)", () => {
   test("watchBalances returns initial balances", async () => {

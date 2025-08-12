@@ -14,16 +14,14 @@ export class ProviderManager {
   }
 
   private createProvider(name: ProviderName): EventProvider {
-    // For MVP we wire only WsProvider; others are added as stubs
     if (name === "ws" || name === "auto") {
       const url = this.options.rpcUrl;
       if (!url) throw new Error("rpcUrl is required for ws provider");
       return new WsProvider(url);
     }
-    // TODO: Implement: allium, goldsky, quicknode
-    // For now, fallback to ws when explicit provider not yet implemented
+    // With only ws supported, default to ws for any value (type limits to 'auto' | 'ws')
     const url = this.options.rpcUrl;
-    if (!url) throw new Error("rpcUrl is required for fallback ws provider");
+    if (!url) throw new Error("rpcUrl is required for ws provider");
     return new WsProvider(url);
   }
 }

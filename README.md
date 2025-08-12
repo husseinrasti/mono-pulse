@@ -46,11 +46,8 @@ stop();
 import { MonoPulse, type MonoPulseOptions } from "monopulse";
 
 const options: MonoPulseOptions = {
-  provider: "auto", // "auto" | "allium" | "goldsky" | "quicknode" | "ws"
+  provider: "auto", // "auto" | "ws"
   rpcUrl: "wss://monad-testnet.example", // required for ws
-  alliumApiKey: process.env.ALLIUM_API_KEY,
-  goldskyApiKey: process.env.GOLDSKY_API_KEY,
-  quicknodeApiKey: process.env.QUICKNODE_API_KEY,
   logger: { level: "info" },
 };
 
@@ -60,8 +57,7 @@ const sdk = new MonoPulse(options);
 ### Options
 
 - `provider`: Which streaming provider to use. Use `auto` to pick the best available.
-- `rpcUrl`: WebSocket RPC endpoint (required for `ws` provider or as fallback).
-- `alliumApiKey`, `goldskyApiKey`, `quicknodeApiKey`: API keys if applicable.
+- `rpcUrl`: WebSocket RPC endpoint (required for `ws`).
 - `logger.level`: `silent` | `error` | `warn` | `info` | `debug`.
 
 ## API Reference
@@ -176,36 +172,10 @@ const stop = await sdk.watchBlockStats((stats) => console.log(stats.blockNumber)
 
 ## Providers
 
-MonoPulse supports multiple event/stream providers. Use `provider: 'auto'` to let MonoPulse choose or pick one explicitly.
-
-> Note: In the current MVP, `ws` is the primary provider. Integrations for Allium, Goldsky, and QuickNode are planned; the SDK interface is stable so you can switch providers later without changing watcher code.
-> Realtime updates today are delivered via efficient polling keyed to `getBlockNumber()` changes, with timers fully cleaned up on `stop()`. Provider-native streaming will be added in future updates where available.
-
-### WebSocket RPC (ws)
+MonoPulse currently supports a single provider based on WebSocket RPC. Use `provider: 'auto'` to default to `ws`, or set `provider: 'ws'` explicitly.
 
 ```ts
 const sdk = new MonoPulse({ provider: "ws", rpcUrl: process.env.RPC_URL! });
-```
-
-### Allium (streams)
-
-```ts
-const sdk = new MonoPulse({ provider: "allium", alliumApiKey: process.env.ALLIUM_API_KEY });
-```
-
-### Goldsky
-
-```ts
-const sdk = new MonoPulse({ provider: "goldsky", goldskyApiKey: process.env.GOLDSKY_API_KEY });
-```
-
-### QuickNode
-
-```ts
-const sdk = new MonoPulse({
-  provider: "quicknode",
-  quicknodeApiKey: process.env.QUICKNODE_API_KEY,
-});
 ```
 
 ## Examples

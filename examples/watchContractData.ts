@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+
 import { MonoPulse } from "../src/index.js";
 
 async function main() {
@@ -33,10 +34,10 @@ async function main() {
     },
   ] as const;
   const userAddress = process.env.USER_ADDRESS as `0x${string}`;
-  console.log("User address:", userAddress);
+  console.warn("User address:", userAddress);
   if (!userAddress) throw new Error("USER_ADDRESS is required (set it in .env or .env.local)");
   const contractAddress = process.env.CONTRACT_ADDRESS as `0x${string}`;
-  console.log("Contract address:", contractAddress);
+  console.warn("Contract address:", contractAddress);
   if (!contractAddress)
     throw new Error("CONTRACT_ADDRESS is required (set it in .env or .env.local)");
   const stop = await sdk.watchContractData(
@@ -44,7 +45,7 @@ async function main() {
     abi,
     ["totalSupply", "symbol", { functionName: "balanceOf", args: [userAddress] }],
     (data) => {
-      console.log("Contract data updated:", data);
+      console.warn("Contract data updated:", data);
     },
   );
 

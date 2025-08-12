@@ -1,7 +1,7 @@
 export type Hex = `0x${string}`;
 export type Address = Hex;
 
-export type ProviderName = "auto" | "allium" | "goldsky" | "quicknode" | "ws";
+export type ProviderName = "auto" | "ws";
 
 export type LogTopic = Hex | Hex[] | null;
 
@@ -15,9 +15,6 @@ export interface LogFilter {
 export interface MonoPulseOptions {
   provider: ProviderName;
   rpcUrl?: string;
-  alliumApiKey?: string;
-  goldskyApiKey?: string;
-  quicknodeApiKey?: string;
   logger?: {
     level?: "silent" | "error" | "warn" | "info" | "debug";
   };
