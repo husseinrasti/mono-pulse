@@ -13,7 +13,7 @@ describe("watchers (MVP)", () => {
     const updates: Array<{ native: bigint; tokens: Record<Address, bigint> }> = [];
     const stop = await watchBalances(client, ZERO, [ZERO], (b) => updates.push(b));
     expect(updates.length).toBe(1);
-    expect(updates[0].native).toBe(100n);
+    expect(updates[0]!.native).toBe(100n);
     stop();
   });
 
@@ -22,7 +22,7 @@ describe("watchers (MVP)", () => {
     const updates: Array<Record<string, unknown>> = [];
     const stop = await watchContractData(client, ZERO, [], ["totalSupply"], (d) => updates.push(d));
     expect(updates.length).toBe(1);
-    expect(updates[0].totalSupply).toBeDefined();
+    expect(updates[0]!.totalSupply).toBeDefined();
     stop();
   });
 
