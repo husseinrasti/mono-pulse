@@ -4,7 +4,10 @@ Real-time Monad data fetching with smart batching and multicall. MonoPulse provi
 
 - Easy to use, inspired by ethers.js and viem
 - Multicall with intelligent batching and fail-skip behavior
-- Real-time updates via provider subscriptions (new heads, logs, pending txs)
+- Real-time updates via provider subscriptions (new heads, logs)
+- Monad speculative feeds: `monadNewHeads`, `monadLogs`
+- Commit state tracking for heads/logs: `Proposed → Voted → Finalized → Verified`
+- Selectable feed modes: finalized-only or speculative
 - Pluggable providers with automatic fallback
 
 ## Installation
@@ -40,6 +43,18 @@ const stop = await sdk.watchBalances(
 stop();
 ```
 
+## Speculative vs Finalized feeds
+
+Monad exposes speculative feeds that stream block proposals before they are finalized. MonoPulse supports both modes:
+
+- Finalized mode (default): only finalized blocks/logs. Lowest reorg risk, slightly higher latency.
+- Speculative mode: includes proposals with commit states. Fastest updates with eventual re-emits as blocks advance through `Proposed → Voted → Finalized → Verified`.
+
+When to use which:
+
+- Use finalized for user-visible balances, accounting, or any state requiring stability.
+- Use speculative for trading UIs, mempool-like dashboards, or latency-sensitive experiences where brief reordering is acceptable.
+
 ## Initialization
 
 ```ts
@@ -59,18 +74,21 @@ const sdk = new MonoPulse(options);
 - `provider`: Which streaming provider to use. Use `auto` to pick the best available.
 - `rpcUrl`: WebSocket RPC endpoint (required for `ws`).
 - `logger.level`: `silent` | `error` | `warn` | `info` | `debug`.
+- Watcher options (all watchers): `{ pollIntervalMs?: number, feed?: "finalized" | "speculative", verifiedOnly?: boolean }`
+  - `feed`: select finalized-only or speculative feeds.
+  - `verifiedOnly`: in speculative mode, only emit when `commitState` is `Verified`.
 
 ## API Reference
 
 All watcher methods return a function `() => void` to stop the subscription.
-All watchers also accept an optional options object `{ pollIntervalMs?: number }` to control how frequently new blocks are polled when provider streaming is unavailable.
+All watchers accept an optional options object. In addition to `{ pollIntervalMs?: number }`, Monad speculative feed options are supported across the SDK: `feed?: "finalized" | "speculative"`, `verifiedOnly?: boolean`.
 
 ### sdk.watchBalances(address, tokens, onUpdate)
 
 - **address**: `0x…` user address
 - **tokens**: `Address[]` list of ERC20 token addresses
 - **onUpdate**: `(balances) => void`
-- **options** (optional): `{ pollIntervalMs?: number }`
+- **options** (optional): `{ pollIntervalMs?: number, feed?: "finalized" | "speculative", verifiedOnly?: boolean }`
 
 Types:
 
@@ -101,7 +119,7 @@ const stop = await sdk.watchBalances(
   - `"totalSupply"`
   - `{ functionName: "balanceOf", args: ["0xUserAddress"] }`
 - **onUpdate**: `(data: Record<string, unknown>) => void`
-- **options** (optional): `{ pollIntervalMs?: number }`
+- **options** (optional): `{ pollIntervalMs?: number, feed?: "finalized" | "speculative", verifiedOnly?: boolean }`
 
 Example:
 
@@ -144,7 +162,7 @@ const stop = await sdk.watchContractData(
 - **owner**: user address
 - **contracts**: ERC721/1155 contract addresses
 - **onUpdate**: `(nfts: Record<Address, bigint>) => void`
-- **options** (optional): `{ pollIntervalMs?: number }`
+- **options** (optional): `{ pollIntervalMs?: number, feed?: "finalized" | "speculative", verifiedOnly?: boolean }`
 
 Example:
 
@@ -157,30 +175,149 @@ const stop = await sdk.watchNFTs(
 );
 ```
 
-### sdk.watchBlockStats(onUpdate)
+### sdk.watchBlockStats(onUpdate, options)
 
-- **onUpdate**: `(stats: { blockNumber: bigint }) => void`
-- **options** (optional): `{ pollIntervalMs?: number }`
+- **onUpdate**: `(stats: { blockNumber: bigint, blockId?: string | null, commitState?: "Proposed" | "Voted" | "Finalized" | "Verified" | null }) => void`
+- **options**: `{ pollIntervalMs?: number, feed?: "finalized" | "speculative", verifiedOnly?: boolean }`
 
-Example:
+Example (speculative):
 
 ```ts
-const stop = await sdk.watchBlockStats((stats) => console.log(stats.blockNumber), {
-  pollIntervalMs: 5000,
+const stop = await sdk.watchBlockStats(
+  (stats) => console.log(stats.blockNumber, stats.commitState),
+  {
+    pollIntervalMs: 5000,
+    feed: "speculative",
+    verifiedOnly: false,
+  },
+);
+
+// Verified-only example
+await sdk.watchBlockStats((s) => console.log("Verified:", s.blockNumber), {
+  feed: "speculative",
+  verifiedOnly: true,
 });
+
+// Balances using speculative heads
+await sdk.watchBalances("0x1234...abcd", ["0xTokenAddr1"], (b) => console.log(b), {
+  feed: "speculative",
+});
+
+// Contract data using speculative heads
+await sdk.watchContractData("0xContract…", [], ["totalSupply"], (d) => console.log(d), {
+  feed: "speculative",
+});
+```
+
+### Commit state model
+
+`commitState` reflects Monad’s real-time consensus progression for speculative feeds:
+
+- `Proposed`: a candidate block was proposed.
+- `Voted`: the proposal received votes and gained confidence.
+- `Finalized`: accepted by consensus; stable for most applications.
+- `Verified`: cryptographically verified and canonical.
+
+In speculative mode, MonoPulse may re-emit a blockNumber when its `commitState` advances (e.g., from `Proposed` to `Finalized`), optionally with a `blockId` identifying the proposal.
+
+## Usage examples
+
+### Finalized feed mode
+
+```ts
+import { MonoPulse } from "monopulse";
+
+const sdk = new MonoPulse({ provider: "ws", rpcUrl: process.env.RPC_URL! });
+
+// Heads (finalized-only)
+await sdk.watchBlockStats(
+  (s) => {
+    console.log(`head: #${s.blockNumber.toString()}`);
+  },
+  { feed: "finalized" },
+);
+
+// Balances (finalized-only)
+await sdk.watchBalances(
+  process.env.USER_ADDRESS as `0x${string}`,
+  [process.env.TOKEN_ADDRESSES!.split(",")[0] as `0x${string}`],
+  (b) => console.log("balances:", b),
+  { feed: "finalized" },
+);
+```
+
+### Speculative feed mode with commit state logging
+
+```ts
+import { MonoPulse } from "monopulse";
+
+const sdk = new MonoPulse({ provider: "ws", rpcUrl: process.env.RPC_URL! });
+
+let latestCommitState: string | null = null;
+let latestBlockId: string | null = null;
+
+await sdk.watchBlockStats(
+  (s) => {
+    latestCommitState = (s.commitState as string) ?? null;
+    latestBlockId = (s.blockId as string) ?? null;
+    console.log(
+      `head: #${s.blockNumber.toString()} state=${s.commitState ?? "-"} id=${s.blockId ?? "-"}`,
+    );
+  },
+  { feed: "speculative" },
+);
+
+await sdk.watchBalances(
+  process.env.USER_ADDRESS as `0x${string}`,
+  process.env.TOKEN_ADDRESSES!.split(",").map((s) => s.trim() as `0x${string}`),
+  (b) => {
+    const prefix = `[${latestCommitState ?? "final"}:${latestBlockId ?? "-"}]`;
+    console.log(`${prefix} balances: native=${b.native.toString()}`);
+  },
+  { feed: "speculative" },
+);
 ```
 
 ## Providers
 
 MonoPulse currently supports a single provider based on WebSocket RPC. Use `provider: 'auto'` to default to `ws`, or set `provider: 'ws'` explicitly.
 
+Monad real-time extensions are supported:
+
+- Heads: `eth_subscribe` to `monadNewHeads` in speculative mode, `newHeads` in finalized mode
+- Logs: `eth_subscribe` to `monadLogs` in speculative mode, `logs` in finalized mode
+
 ```ts
 const sdk = new MonoPulse({ provider: "ws", rpcUrl: process.env.RPC_URL! });
 ```
 
+## Environment setup
+
+Create a `.env` or `.env.local` with the variables relevant to your use case (the SDK reads `RPC_URL` or `WS_RPC_URL`):
+
+```env
+# Required
+RPC_URL=wss://monad-testnet.example
+# or
+WS_RPC_URL=wss://monad-testnet.example
+
+# Common
+USER_ADDRESS=0xYourUserAddress
+
+# Tokens / Contracts / NFTs
+TOKEN_ADDRESSES=0xToken1,0xToken2
+CONTRACT_ADDRESS=0xSomeContract
+NFT_CONTRACT_ADDRESSES=0xNft1,0xNft2
+
+# Feed tuning (optional)
+FEED_MODE=finalized # or speculative
+VERIFIED_ONLY=false
+DURATION_MS=30000
+```
+
 ## Examples
 
-See the `examples/` directory for runnable scripts:
+See the `examples/` directory for runnable scripts (showing both finalized and speculative modes):
 
 - `examples/watchBalances.ts`
 - `examples/watchContractData.ts`
@@ -193,6 +330,11 @@ Run with:
 # Provide env vars like RPC_URL, USER_ADDRESS, CONTRACT_ADDRESS
 node --loader ts-node/esm examples/watchBalances.ts
 ```
+
+## Links
+
+- GitHub: [mono-pulse](https://github.com/husseinrasti/mono-pulse)
+- npm: [`monopulse`](https://www.npmjs.com/package/monopulse)
 
 ## Contributing
 

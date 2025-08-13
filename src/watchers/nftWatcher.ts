@@ -1,5 +1,12 @@
 import { DataFetcher } from "../core/dataFetcher.js";
-import type { Address, MulticallCall, RpcClient, WatcherStopFn } from "../utils/types.js";
+import type {
+  Address,
+  EventProvider,
+  FeedType,
+  MulticallCall,
+  RpcClient,
+  WatcherStopFn,
+} from "../utils/types.js";
 
 const ERC721_ABI = [
   {
@@ -16,7 +23,12 @@ export const watchNFTs = async (
   owner: Address,
   contracts: Address[],
   onUpdate: (nfts: Record<Address, bigint>) => void,
-  options?: { pollIntervalMs?: number },
+  options?: {
+    pollIntervalMs?: number;
+    eventProvider?: EventProvider;
+    feed?: FeedType;
+    verifiedOnly?: boolean;
+  },
 ): Promise<WatcherStopFn> => {
   const fetcher = new DataFetcher(client);
   const pollIntervalMs = options?.pollIntervalMs ?? 7_500;
@@ -42,6 +54,7 @@ export const watchNFTs = async (
   let stopped = false;
   let lastBlock: bigint | null = null;
   let interval: NodeJS.Timeout | null = null;
+  let unsubscribe: (() => void) | null = null;
 
   onUpdate(await fetchAll());
 
@@ -60,16 +73,28 @@ export const watchNFTs = async (
     }, pollIntervalMs);
   };
 
-  try {
-    lastBlock = await client.getBlockNumber();
-  } catch {
-    lastBlock = null;
+  if (options?.eventProvider) {
+    const provider = options.eventProvider;
+    const evOpts: { feed?: FeedType; verifiedOnly?: boolean } = {};
+    if (options.feed) evOpts.feed = options.feed;
+    if (options.verifiedOnly !== undefined) evOpts.verifiedOnly = options.verifiedOnly;
+    unsubscribe = provider.onNewBlock(async () => {
+      if (stopped) return;
+      onUpdate(await fetchAll());
+    }, evOpts);
+  } else {
+    try {
+      lastBlock = await client.getBlockNumber();
+    } catch {
+      lastBlock = null;
+    }
+    startPolling();
   }
-  startPolling();
 
   const stop: WatcherStopFn = () => {
     stopped = true;
     if (interval) clearInterval(interval);
+    if (unsubscribe) unsubscribe();
   };
   return stop;
 };

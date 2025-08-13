@@ -1,5 +1,11 @@
 import { DataFetcher } from "../core/dataFetcher.js";
-import type { MulticallCall, RpcClient, WatcherStopFn } from "../utils/types.js";
+import type {
+  EventProvider,
+  FeedType,
+  MulticallCall,
+  RpcClient,
+  WatcherStopFn,
+} from "../utils/types.js";
 
 type ContractCallDescriptor = { functionName: string; args?: readonly unknown[] };
 
@@ -9,7 +15,12 @@ export const watchContractData = async (
   abi: readonly unknown[],
   functions: (string | ContractCallDescriptor)[],
   onUpdate: (data: Record<string, unknown>) => void,
-  options?: { pollIntervalMs?: number },
+  options?: {
+    pollIntervalMs?: number;
+    eventProvider?: EventProvider;
+    feed?: FeedType;
+    verifiedOnly?: boolean;
+  },
 ): Promise<WatcherStopFn> => {
   const fetcher = new DataFetcher(client);
   const pollIntervalMs = options?.pollIntervalMs ?? 5_000;
@@ -41,6 +52,7 @@ export const watchContractData = async (
   let stopped = false;
   let lastBlock: bigint | null = null;
   let interval: NodeJS.Timeout | null = null;
+  let unsubscribe: (() => void) | null = null;
 
   onUpdate(await fetchAll());
 
@@ -59,16 +71,28 @@ export const watchContractData = async (
     }, pollIntervalMs);
   };
 
-  try {
-    lastBlock = await client.getBlockNumber();
-  } catch {
-    lastBlock = null;
+  if (options?.eventProvider) {
+    const provider = options.eventProvider;
+    const evOpts: { feed?: FeedType; verifiedOnly?: boolean } = {};
+    if (options.feed) evOpts.feed = options.feed;
+    if (options.verifiedOnly !== undefined) evOpts.verifiedOnly = options.verifiedOnly;
+    unsubscribe = provider.onNewBlock(async () => {
+      if (stopped) return;
+      onUpdate(await fetchAll());
+    }, evOpts);
+  } else {
+    try {
+      lastBlock = await client.getBlockNumber();
+    } catch {
+      lastBlock = null;
+    }
+    startPolling();
   }
-  startPolling();
 
   const stop: WatcherStopFn = () => {
     stopped = true;
     if (interval) clearInterval(interval);
+    if (unsubscribe) unsubscribe();
   };
   return stop;
 };
