@@ -5,6 +5,9 @@ export type ProviderName = "auto" | "ws";
 
 export type LogTopic = Hex | Hex[] | null;
 
+export type CommitState = "Proposed" | "Voted" | "Finalized" | "Verified";
+export type FeedType = "finalized" | "speculative";
+
 export interface LogFilter {
   address?: Address | Address[];
   topics?: [LogTopic?, LogTopic?, LogTopic?, LogTopic?];
@@ -32,10 +35,14 @@ export interface EventUnsubscribeFn {
 export interface EventProvider {
   readonly name: string;
 
-  onNewBlock: (handler: (blockNumber: bigint) => void) => EventUnsubscribeFn;
+  onNewBlock: (
+    handler: (block: BlockHeaderEvent) => void,
+    options?: { feed?: FeedType; verifiedOnly?: boolean },
+  ) => EventUnsubscribeFn;
   onLogs: (
     filter: LogFilter,
     handler: (logs: readonly ProviderLog[]) => void,
+    options?: { feed?: FeedType; verifiedOnly?: boolean },
   ) => EventUnsubscribeFn;
   onPendingTransactions: (handler: (txHashes: readonly Hex[]) => void) => EventUnsubscribeFn;
   onTransactionsForAddress: (
@@ -50,6 +57,17 @@ export interface ProviderLog {
   data: Hex;
   blockNumber?: bigint | null;
   transactionHash?: Hex | null;
+  // Monad speculative execution extensions
+  blockId?: string | null;
+  commitState?: CommitState | null;
+}
+
+export interface BlockHeaderEvent {
+  blockNumber: bigint;
+  hash?: Hex | null;
+  // Monad speculative execution extensions
+  blockId?: string | null;
+  commitState?: CommitState | null;
 }
 
 export interface ObservedTransaction {

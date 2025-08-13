@@ -63,7 +63,10 @@ const sdk = new MonoPulse(options);
 ## API Reference
 
 All watcher methods return a function `() => void` to stop the subscription.
-All watchers also accept an optional options object `{ pollIntervalMs?: number }` to control how frequently new blocks are polled when provider streaming is unavailable.
+All watchers accept an optional options object. In addition to `{ pollIntervalMs?: number }`, Monad speculative feed options are supported:
+
+- `feed?: "finalized" | "speculative"` — choose finalized-only (default) or Monad speculative feeds.
+- `verifiedOnly?: boolean` — when true, only emit events when `commitState` is `Verified`.
 
 ### sdk.watchBalances(address, tokens, onUpdate)
 
@@ -157,16 +160,37 @@ const stop = await sdk.watchNFTs(
 );
 ```
 
-### sdk.watchBlockStats(onUpdate)
+### sdk.watchBlockStats(onUpdate, options)
 
-- **onUpdate**: `(stats: { blockNumber: bigint }) => void`
-- **options** (optional): `{ pollIntervalMs?: number }`
+- **onUpdate**: `(stats: { blockNumber: bigint, blockId?: string | null, commitState?: "Proposed" | "Voted" | "Finalized" | "Verified" | null }) => void`
+- **options**: `{ pollIntervalMs?: number, feed?: "finalized" | "speculative", verifiedOnly?: boolean }`
 
 Example:
 
 ```ts
-const stop = await sdk.watchBlockStats((stats) => console.log(stats.blockNumber), {
-  pollIntervalMs: 5000,
+const stop = await sdk.watchBlockStats(
+  (stats) => console.log(stats.blockNumber, stats.commitState),
+  {
+    pollIntervalMs: 5000,
+    feed: "speculative",
+    verifiedOnly: false,
+  },
+);
+
+// Verified-only example
+await sdk.watchBlockStats((s) => console.log("Verified:", s.blockNumber), {
+  feed: "speculative",
+  verifiedOnly: true,
+});
+
+// Balances using speculative heads
+await sdk.watchBalances("0x1234...abcd", ["0xTokenAddr1"], (b) => console.log(b), {
+  feed: "speculative",
+});
+
+// Contract data using speculative heads
+await sdk.watchContractData("0xContract…", [], ["totalSupply"], (d) => console.log(d), {
+  feed: "speculative",
 });
 ```
 
