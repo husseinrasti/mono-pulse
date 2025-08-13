@@ -1,6 +1,6 @@
 {
   "name": "monopulse",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "MonoPulse SDK: Real-time Monad data with smart batching and multicall",
   "keywords": [
     "monad",
@@ -17,12 +17,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com:your-org/monopulse.git"
+    "url": "git+ssh://git@github.com:husseinrasti/mono-pulse.git"
   },
   "bugs": {
-    "url": "https://github.com/your-org/monopulse/issues"
+    "url": "https://github.com/husseinrasti/mono-pulse/issues"
   },
-  "homepage": "https://github.com/your-org/monopulse#readme",
+  "homepage": "https://github.com/husseinrasti/mono-pulse#readme",
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
