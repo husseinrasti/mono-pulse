@@ -23,8 +23,8 @@ async function main() {
     },
   );
 
-  // Stop after 30s for demo
-  setTimeout(() => stop(), 30_000);
+  const DURATION_MS = Number(process.env.DURATION_MS ?? 30_000);
+  setTimeout(() => stop(), DURATION_MS);
 }
 
 main().catch((err) => {

@@ -10,7 +10,7 @@ import type {
   WatcherStopFn,
 } from "./utils/types.js";
 import { watchBalances } from "./watchers/balancesWatcher.js";
-import { watchBlockStats } from "./watchers/blockStatsWatcher.js";
+import { watchBlockStats, type BlockStats } from "./watchers/blockStatsWatcher.js";
 import { watchContractData } from "./watchers/contractWatcher.js";
 import { watchNFTs } from "./watchers/nftWatcher.js";
 
@@ -99,7 +99,7 @@ export class MonoPulse {
   }
 
   async watchBlockStats(
-    onUpdate: (stats: { blockNumber: bigint }) => void,
+    onUpdate: (stats: BlockStats) => void,
     opts?: { pollIntervalMs?: number; feed?: FeedType; verifiedOnly?: boolean },
   ) {
     const provider = this.options.overrides?.eventProvider ?? this.providers.getProvider();

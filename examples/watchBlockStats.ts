@@ -13,8 +13,8 @@ async function main() {
   const stop = await sdk.watchBlockStats((stats) => {
     console.warn("Block stats:", stats);
   });
-
-  setTimeout(() => stop(), 30_000);
+  const DURATION_MS = Number(process.env.DURATION_MS ?? 30_000);
+  setTimeout(() => stop(), DURATION_MS);
 }
 
 main().catch((err) => {

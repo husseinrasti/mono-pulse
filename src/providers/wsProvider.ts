@@ -18,6 +18,7 @@ type ActiveSubscription = {
   routeId?: string | number;
   kind: "heads" | "logs" | "other";
   handler: (result: unknown) => void;
+  pendingUnsubscribe?: boolean;
 };
 
 type JsonRpcMessage = {
@@ -34,6 +35,7 @@ export class WsProvider implements EventProvider {
   private idToSub = new Map<number, ActiveSubscription>();
   private routeToSub = new Map<string | number, ActiveSubscription>();
   private sendQueue: string[] = [];
+  private activeCount = 0;
 
   constructor(private readonly url: string) {
     this.ws = new WebSocket(url);
@@ -88,6 +90,10 @@ export class WsProvider implements EventProvider {
       sub.routeId = routeId as string | number;
       this.routeToSub.set(routeId as string | number, sub);
       this.idToSub.delete(msg.id);
+      // If unsubscribe was requested before we received the route id, perform it now
+      if (sub.pendingUnsubscribe) {
+        this.performUnsubscribe(sub);
+      }
     }
   }
 
@@ -114,13 +120,12 @@ export class WsProvider implements EventProvider {
         if (options?.verifiedOnly && evt.commitState !== "Verified") return;
         handler(evt);
       },
-      unsubscribe: () => this.send("eth_unsubscribe", [id]),
+      unsubscribe: () => this.requestUnsubscribe(active),
     };
     this.idToSub.set(id, active);
+    this.activeCount += 1;
     return () => {
       active.unsubscribe();
-      this.idToSub.delete(id);
-      if (active.routeId) this.routeToSub.delete(active.routeId);
     };
   }
 
@@ -154,13 +159,12 @@ export class WsProvider implements EventProvider {
           : parsed;
         if (filtered.length > 0) handler(filtered);
       },
-      unsubscribe: () => this.send("eth_unsubscribe", [id]),
+      unsubscribe: () => this.requestUnsubscribe(active),
     };
     this.idToSub.set(id, active);
+    this.activeCount += 1;
     return () => {
       active.unsubscribe();
-      this.idToSub.delete(id);
-      if (active.routeId) this.routeToSub.delete(active.routeId);
     };
   }
 
@@ -170,13 +174,12 @@ export class WsProvider implements EventProvider {
       id,
       kind: "other",
       handler: () => {},
-      unsubscribe: () => this.send("eth_unsubscribe", [id]),
+      unsubscribe: () => this.requestUnsubscribe(active),
     };
     this.idToSub.set(id, active);
+    this.activeCount += 1;
     return () => {
       active.unsubscribe();
-      this.idToSub.delete(id);
-      if (active.routeId) this.routeToSub.delete(active.routeId);
     };
   }
 
@@ -195,5 +198,35 @@ export class WsProvider implements EventProvider {
     if (filter.fromBlock) out.fromBlock = "0x" + filter.fromBlock.toString(16);
     if (filter.toBlock) out.toBlock = "0x" + filter.toBlock.toString(16);
     return out;
+  }
+
+  private requestUnsubscribe(active: ActiveSubscription): void {
+    if (active.routeId !== undefined) {
+      this.performUnsubscribe(active);
+      return;
+    }
+    // route id not known yet; mark pending
+    active.pendingUnsubscribe = true;
+  }
+
+  private performUnsubscribe(active: ActiveSubscription): void {
+    try {
+      const rid = active.routeId ?? active.id;
+      this.send("eth_unsubscribe", [rid]);
+    } finally {
+      if (active.routeId !== undefined) this.routeToSub.delete(active.routeId);
+      // Also remove from id map if present
+      for (const [id, sub] of this.idToSub.entries()) {
+        if (sub === active) this.idToSub.delete(id);
+      }
+      this.activeCount = Math.max(0, this.activeCount - 1);
+      if (this.activeCount === 0) {
+        try {
+          this.ws.close();
+        } catch {
+          // ignore
+        }
+      }
+    }
   }
 }
