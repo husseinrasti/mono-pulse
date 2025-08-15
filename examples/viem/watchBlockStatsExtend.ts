@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
-import { MonoPulse } from "../src/index.js";
-import type { FeedType } from "../src/utils/types.js";
+import { createClient, publicActions, webSocket } from "viem";
+import { watchBlockStatsExtend } from "monopulse/viemExtends";
 
 async function main() {
   dotenv.config();
@@ -9,15 +9,17 @@ async function main() {
   const rpcUrl = process.env.RPC_URL || process.env.WS_RPC_URL;
   if (!rpcUrl) throw new Error("RPC_URL is required (set it in .env or .env.local)");
 
-  const feed: FeedType = process.env.FEED_MODE === "speculative" ? "speculative" : "finalized";
+  const feed = process.env.FEED_MODE === "speculative" ? "speculative" : "finalized";
   console.warn("Feed mode:", feed);
 
   const verifiedOnly = String(process.env.VERIFIED_ONLY ?? "false").toLowerCase() === "true";
 
-  const sdk = new MonoPulse({ provider: "ws", rpcUrl });
+  const client = createClient({ transport: webSocket(rpcUrl) }).extend(publicActions);
+
+  const extended = client.extend(watchBlockStatsExtend);
   const seenStates = new Map<bigint, string | null>();
 
-  const stop = await sdk.watchBlockStats(
+  const stop = await extended.watchBlockStats(
     (s) => {
       if (feed === "speculative") {
         const prev = seenStates.get(s.blockNumber) ?? null;
