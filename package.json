@@ -32,7 +32,8 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
-    "./viemExtends": "./src/viemExtends.ts"
+    "./viemExtends": "./src/viemExtends.ts",
+    "./providers": "./src/providers/index.ts"
   },
   "files": [
     "dist",

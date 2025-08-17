@@ -229,4 +229,12 @@ export class WsProvider implements EventProvider {
       }
     }
   }
+
+  public close(): void {
+    try {
+      this.ws.close();
+    } catch {
+      // ignore
+    }
+  }
 }

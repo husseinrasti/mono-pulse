@@ -1,6 +1,6 @@
 import type { PublicClient } from "viem";
 
-import type { Address, FeedType, RpcClient, WatcherStopFn } from "./utils/types.js";
+import type { Address, EventProvider, FeedType, RpcClient, WatcherStopFn } from "./utils/types.js";
 import { watchBalances } from "./watchers/balancesWatcher.js";
 import { watchBlockStats, type BlockStats } from "./watchers/blockStatsWatcher.js";
 import { watchContractData } from "./watchers/contractWatcher.js";
@@ -79,7 +79,12 @@ export const watchBalancesExtend = (client: PublicClient) => {
       address: Address,
       tokens: Address[],
       onUpdate: (b: { native: bigint; tokens: Record<Address, bigint> }) => void,
-      opts?: { pollIntervalMs?: number; feed?: FeedType; verifiedOnly?: boolean },
+      opts?: {
+        pollIntervalMs?: number;
+        eventProvider?: EventProvider;
+        feed?: FeedType;
+        verifiedOnly?: boolean;
+      },
     ): Promise<WatcherStopFn> => {
       return watchBalances(adapter, address, tokens, onUpdate, opts);
     },
@@ -94,7 +99,12 @@ export const watchContractDataExtend = (client: PublicClient) => {
       abi: readonly unknown[],
       functions: (string | { functionName: string; args?: readonly unknown[] })[],
       onUpdate: (data: Record<string, unknown>) => void,
-      opts?: { pollIntervalMs?: number; feed?: FeedType; verifiedOnly?: boolean },
+      opts?: {
+        pollIntervalMs?: number;
+        eventProvider?: EventProvider;
+        feed?: FeedType;
+        verifiedOnly?: boolean;
+      },
     ): Promise<WatcherStopFn> => {
       return watchContractData(adapter, address, abi, functions, onUpdate, opts);
     },
@@ -108,7 +118,12 @@ export const watchNFTsExtend = (client: PublicClient) => {
       owner: Address,
       contracts: Address[],
       onUpdate: (data: Record<Address, bigint>) => void,
-      opts?: { pollIntervalMs?: number; feed?: FeedType; verifiedOnly?: boolean },
+      opts?: {
+        pollIntervalMs?: number;
+        eventProvider?: EventProvider;
+        feed?: FeedType;
+        verifiedOnly?: boolean;
+      },
     ): Promise<WatcherStopFn> => {
       return watchNFTs(adapter, owner, contracts, onUpdate, opts);
     },
@@ -120,7 +135,12 @@ export const watchBlockStatsExtend = (client: PublicClient) => {
   return {
     watchBlockStats: async (
       onUpdate: (stats: BlockStats) => void,
-      opts?: { pollIntervalMs?: number; feed?: FeedType; verifiedOnly?: boolean },
+      opts?: {
+        pollIntervalMs?: number;
+        eventProvider?: EventProvider;
+        feed?: FeedType;
+        verifiedOnly?: boolean;
+      },
     ): Promise<WatcherStopFn> => {
       return watchBlockStats(adapter, onUpdate, opts);
     },
