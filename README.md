@@ -43,6 +43,52 @@ const stop = await sdk.watchBalances(
 stop();
 ```
 
+## Using with viem extends
+
+MonoPulse provides extend functions that allow you to integrate watchers into an existing viem `PublicClient` without replacing your client setup. These helpers are perfect for projects that already use viem and want to add real-time Monad data monitoring capabilities.
+
+### Purpose
+
+The extend functions (`watchBalancesExtend`, `watchContractDataExtend`, `watchNFTsExtend`, `watchBlockStatsExtend`) allow developers to:
+
+- Keep their existing viem client configuration
+- Add MonoPulse watchers as methods on their client
+- Choose between polling and real-time updates
+- Maintain the same API surface as direct SDK watchers
+
+### Basic Usage (Polling Mode)
+
+```ts
+import { createClient, publicActions, webSocket } from "viem";
+import { watchBlockStatsExtend } from "monopulse/viemExtends";
+
+const client = createClient({ transport: webSocket(rpcUrl) }).extend(publicActions);
+const extended = client.extend(watchBlockStatsExtend);
+
+const stop = await extended.watchBlockStats((stats) => console.log(`Block #${stats.blockNumber}`), {
+  pollIntervalMs: 5000,
+});
+```
+
+### Real-time Updates with Event Provider
+
+For real-time updates using Monad's speculative feeds (`monadNewHeads` / `monadLogs`), you must provide an `eventProvider` in the options. This enables real-time streaming instead of polling.
+
+```ts
+import { createClient, publicActions, webSocket } from "viem";
+import { watchBlockStatsExtend } from "monopulse/viemExtends";
+import { WsProvider } from "monopulse/providers";
+
+const client = createClient({ transport: webSocket(rpcUrl) }).extend(publicActions);
+const extended = client.extend(watchBlockStatsExtend);
+const eventProvider = new WsProvider(rpcUrl);
+
+const stop = await extended.watchBlockStats(
+  (stats) => console.log(`Block #${stats.blockNumber} state=${stats.commitState}`),
+  { feed: "speculative", eventProvider },
+);
+```
+
 ## Speculative vs Finalized feeds
 
 Monad exposes speculative feeds that stream block proposals before they are finalized. MonoPulse supports both modes:
