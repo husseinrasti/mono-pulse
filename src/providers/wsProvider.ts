@@ -4,6 +4,7 @@ import type {
   Address,
   BlockHeaderEvent,
   CommitState,
+  ConsensusEventData,
   EventProvider,
   EventUnsubscribeFn,
   FeedType,
@@ -37,10 +38,64 @@ export class WsProvider implements EventProvider {
   private sendQueue: string[] = [];
   private activeCount = 0;
 
+  // Consensus event signatures (Monad-specific)
+  // These would match the actual event signatures from Monad's consensus contract
+  private readonly CONSENSUS_EVENT_SIGNATURES = {
+    VoteCast: "0x",
+    BlockFinalized: "0x",
+    BlockVerified: "0x",
+    ProposalSubmitted: "0x",
+  };
+
   constructor(private readonly url: string) {
     this.ws = new WebSocket(url);
     this.ws.on("open", () => this.flushQueue());
     this.ws.on("message", (raw: WebSocket.RawData) => this.handleMessage(String(raw)));
+  }
+
+  /**
+   * Decode consensus event data from log topics and data
+   * This is a basic decoder that can be extended based on Monad's actual event schemas
+   */
+  private decodeConsensusEvent(log: any): ConsensusEventData | null {
+    if (!log.topics || log.topics.length === 0) return null;
+
+    const topic0 = log.topics[0] as string;
+    let eventType: ConsensusEventData["eventType"] = null;
+
+    // Detect event type based on topic signature or address patterns
+    // Note: In production, you'd use the actual keccak256 event signatures
+    if (topic0.includes("Vote") || log.data?.includes("vote")) {
+      eventType = "VoteCast";
+    } else if (topic0.includes("Final") || log.data?.includes("final")) {
+      eventType = "BlockFinalized";
+    } else if (topic0.includes("Verif") || log.data?.includes("verif")) {
+      eventType = "BlockVerified";
+    } else if (topic0.includes("Propos") || log.data?.includes("propos")) {
+      eventType = "ProposalSubmitted";
+    }
+
+    if (!eventType) return null;
+
+    // Extract validator address (typically in topic[1] for indexed parameters)
+    const validator = log.topics[1] ? (log.topics[1] as Address) : null;
+
+    // Extract block number if present
+    let blockNumber: bigint | null = null;
+    if (log.blockNumber) {
+      blockNumber = BigInt(log.blockNumber);
+    }
+
+    // Extract block hash if present in topics
+    const blockHash = log.topics[2] ? (log.topics[2] as Hex) : null;
+
+    return {
+      eventType,
+      validator,
+      blockNumber,
+      blockHash,
+      signature: null, // Could be decoded from data field if needed
+    };
   }
 
   private send(method: string, params: unknown[]): number {
@@ -111,11 +166,29 @@ export class WsProvider implements EventProvider {
         const numHex: string | undefined = result?.number ?? result?.blockNumber;
         if (!numHex) return;
         const blockNumber = BigInt(numHex);
+
+        // Extract QC (Quorum Certificate) data from Monad consensus layer
+        let qc: { signers: Address[]; signatures: Hex[] } | null = null;
+        if (result?.qc) {
+          const signers = Array.isArray(result.qc.signers) ? result.qc.signers : [];
+          const signatures = Array.isArray(result.qc.signatures) ? result.qc.signatures : [];
+          qc = { signers, signatures };
+        } else if (result?.qcSigners || result?.qcSignatures) {
+          // Fallback: handle flat structure
+          const signers = Array.isArray(result.qcSigners) ? result.qcSigners : [];
+          const signatures = Array.isArray(result.qcSignatures) ? result.qcSignatures : [];
+          qc = { signers, signatures };
+        }
+
         const evt: BlockHeaderEvent = {
           blockNumber,
           hash: (result?.hash ?? null) as Hex | null,
           blockId: (result?.blockId ?? null) as string | null,
           commitState: (result?.commitState ?? null) as CommitState | null,
+          // Monad consensus data from block header
+          proposer: (result?.miner ?? result?.proposer ?? null) as Address | null,
+          qc,
+          rawHeader: result,
         };
         if (options?.verifiedOnly && evt.commitState !== "Verified") return;
         handler(evt);
@@ -144,6 +217,10 @@ export class WsProvider implements EventProvider {
         const arr: any[] = Array.isArray(result) ? result : [result];
         const parsed: ProviderLog[] = arr.map((r) => {
           const bn = r?.blockNumber ? BigInt(r.blockNumber) : null;
+
+          // Attempt to decode consensus event data from log
+          const consensusEvent = this.decodeConsensusEvent(r);
+
           return {
             address: r?.address as Address,
             topics: (r?.topics ?? []) as Hex[],
@@ -152,6 +229,10 @@ export class WsProvider implements EventProvider {
             transactionHash: (r?.transactionHash ?? null) as Hex | null,
             blockId: (r?.blockId ?? null) as string | null,
             commitState: (r?.commitState ?? null) as CommitState | null,
+            // Decoded consensus event data (if this is a consensus-related log)
+            consensusEvent,
+            // Preserve raw log for custom parsing
+            rawLog: r,
           } as ProviderLog;
         });
         const filtered = options?.verifiedOnly

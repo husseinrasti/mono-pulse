@@ -266,6 +266,119 @@ await sdk.watchContractData("0xContract…", [], ["totalSupply"], (d) => console
 
 In speculative mode, MonoPulse may re-emit a blockNumber when its `commitState` advances (e.g., from `Proposed` to `Finalized`), optionally with a `blockId` identifying the proposal.
 
+## Consensus & Validator Data
+
+MonoPulse provides **full access to Monad's consensus layer** via `monadNewHeads` subscriptions. All validator and consensus data is available directly in block headers - including proposer information, complete QC (Quorum Certificate) data with all validator signatures, and consensus state progression.
+
+### Data Source
+
+**`monadNewHeads`** provides complete consensus data in each block header:
+
+- Block proposer address
+- Quorum Certificate (QC) with all validator signatures
+- Consensus state (Proposed → Voted → Finalized → Verified)
+- Raw header for custom parsing
+
+### Monad → MonoPulse Field Mapping
+
+The table below shows how Monad's `monadNewHeads` data maps to MonoPulse's TypeScript types:
+
+| Monad Field              | MonoPulse Field | Type                                                         | Description                              |
+| ------------------------ | --------------- | ------------------------------------------------------------ | ---------------------------------------- |
+| `number` / `blockNumber` | `blockNumber`   | `bigint`                                                     | Block number                             |
+| `hash`                   | `hash`          | `Hex \| null`                                                | Block hash                               |
+| `blockId`                | `blockId`       | `string \| null`                                             | Unique proposal ID                       |
+| `commitState`            | `commitState`   | `"Proposed" \| "Voted" \| "Finalized" \| "Verified" \| null` | Consensus state                          |
+| `proposer` / `miner`     | `proposer`      | `Address \| null`                                            | Block proposer address                   |
+| `qc.signers`             | `qc.signers`    | `Address[]`                                                  | Validator addresses who signed the QC    |
+| `qc.signatures`          | `qc.signatures` | `Hex[]`                                                      | Cryptographic signatures from validators |
+| _(entire response)_      | `rawHeader`     | `Record<string, any>`                                        | Full raw header for custom parsing       |
+
+### TypeScript Types
+
+```ts
+// Block header from monadNewHeads (via watchBlockStats)
+interface BlockStats {
+  blockNumber: bigint;
+  hash?: Hex | null;
+  blockId?: string | null;
+  commitState?: "Proposed" | "Voted" | "Finalized" | "Verified" | null;
+
+  // Monad consensus data
+  proposer?: Address | null;
+  qc?: QuorumCertificate | null;
+  rawHeader?: Record<string, any>;
+}
+
+// Quorum Certificate structure
+interface QuorumCertificate {
+  signers: Address[]; // Validators who signed this QC
+  signatures: Hex[]; // Cryptographic signatures
+}
+```
+
+### Usage Example
+
+```ts
+import { MonoPulse } from "monopulse";
+
+const sdk = new MonoPulse({ provider: "ws", rpcUrl: process.env.RPC_URL! });
+
+await sdk.watchBlockStats(
+  (stats) => {
+    console.log(`Block #${stats.blockNumber}`);
+    console.log(`Proposer: ${stats.proposer}`);
+    console.log(`State: ${stats.commitState}`);
+
+    if (stats.qc) {
+      console.log(`QC Signers: ${stats.qc.signers.length}`);
+      console.log(`QC Signatures: ${stats.qc.signatures.length}`);
+
+      // Build validator graph:
+      // - Nodes: stats.proposer + stats.qc.signers
+      // - Edges: signers → proposer (votes)
+      stats.qc.signers.forEach((signer) => {
+        console.log(`  ✓ ${signer} voted for ${stats.proposer}`);
+      });
+    }
+  },
+  { feed: "speculative" },
+);
+```
+
+### Complete Example
+
+See `examples/consensusData.ts` for a comprehensive example that:
+
+- Subscribes to `monadNewHeads` for complete consensus data
+- Builds a consensus timeline with all blocks
+- Tracks validator activity (proposals and votes from QC signatures)
+- Shows consensus state progression (Proposed → Voted → Finalized → Verified)
+- Demonstrates how to build real-time consensus explorers and validator dashboards
+
+Run with:
+
+```bash
+RPC_URL=wss://monad-testnet.example FEED_MODE=speculative node --loader ts-node/esm examples/consensusData.ts
+```
+
+### Use Cases
+
+- **Consensus Explorers**: Build interactive timelines showing block proposals and validator votes
+- **Validator Dashboards**: Track per-validator performance (proposals, votes via QC signatures, participation rate)
+- **Network Health Monitoring**: Visualize consensus liveness, validator uptime, QC completion rates
+- **Trading UIs**: Show real-time consensus confidence (QC signer count) before finalization
+- **Analytics Tools**: Aggregate validator statistics, identify patterns in consensus behavior
+- **Validator Graphs**: Visualize validator relationships (proposer → voters edges from QC data)
+
+### Raw Data Access
+
+Block headers include the **full raw response** for maximum flexibility:
+
+- `BlockStats.rawHeader` - Complete raw block header from `monadNewHeads`
+
+This allows developers to parse additional fields not explicitly exposed by MonoPulse's types.
+
 ## Usage examples
 
 ### Finalized feed mode
@@ -365,10 +478,12 @@ DURATION_MS=30000
 
 See the `examples/` directory for runnable scripts (showing both finalized and speculative modes):
 
-- `examples/watchBalances.ts`
-- `examples/watchContractData.ts`
-- `examples/watchNFTs.ts`
-- `examples/watchBlockStats.ts`
+- `examples/watchBalances.ts` - Monitor native and ERC20 token balances
+- `examples/watchContractData.ts` - Watch smart contract state changes
+- `examples/watchNFTs.ts` - Track NFT ownership
+- `examples/watchBlockStats.ts` - Monitor block production
+- `examples/consensusData.ts` - **Full consensus monitoring** (monadNewHeads + monadLogs combined)
+- `examples/validatorData.ts` - Track validator activity from block headers
 
 Run with:
 

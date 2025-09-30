@@ -1,8 +1,10 @@
 import type {
+  Address,
   BlockHeaderEvent,
   CommitState,
   EventProvider,
   FeedType,
+  QuorumCertificate,
   RpcClient,
   WatcherStopFn,
 } from "../utils/types.js";
@@ -11,6 +13,10 @@ export type BlockStats = {
   blockNumber: bigint;
   blockId?: string | null;
   commitState?: CommitState | null;
+  // Monad consensus data
+  proposer?: Address | null;
+  qc?: QuorumCertificate | null;
+  rawHeader?: Record<string, any>;
 };
 
 export const watchBlockStats = async (
@@ -33,7 +39,13 @@ export const watchBlockStats = async (
     let lastEmitted: bigint | null = null;
 
     // Track proposals per blockNumber
-    type Proposal = { blockId: string | null; state: CommitState | null };
+    type Proposal = {
+      blockId: string | null;
+      state: CommitState | null;
+      proposer?: Address | null;
+      qc?: QuorumCertificate | null;
+      rawHeader?: Record<string, any> | undefined;
+    };
     const numToProposals = new Map<bigint, Map<string | null, Proposal>>();
     const stateRank: Record<CommitState, number> = {
       Proposed: 1,
@@ -74,7 +86,14 @@ export const watchBlockStats = async (
         const first = nums[0]!;
         const best = chooseCanonical(first);
         if (!best) return;
-        onUpdate({ blockNumber: first, blockId: best.blockId, commitState: best.state });
+        onUpdate({
+          blockNumber: first,
+          blockId: best.blockId,
+          commitState: best.state,
+          proposer: best.proposer ?? null,
+          qc: best.qc ?? null,
+          ...(best.rawHeader !== undefined && { rawHeader: best.rawHeader }),
+        });
         lastEmitted = first;
       }
       // emit contiguously
@@ -83,7 +102,14 @@ export const watchBlockStats = async (
         if (!numToProposals.has(next)) break;
         const best = chooseCanonical(next);
         if (!best) break;
-        onUpdate({ blockNumber: next, blockId: best.blockId, commitState: best.state });
+        onUpdate({
+          blockNumber: next,
+          blockId: best.blockId,
+          commitState: best.state,
+          proposer: best.proposer ?? null,
+          qc: best.qc ?? null,
+          ...(best.rawHeader !== undefined && { rawHeader: best.rawHeader }),
+        });
         lastEmitted = next;
       }
     };
@@ -92,18 +118,36 @@ export const watchBlockStats = async (
       const num = e.blockNumber;
       const byId = numToProposals.get(num) ?? new Map<string | null, Proposal>();
       const id = e.blockId ?? null;
-      const existing = byId.get(id) ?? { blockId: id, state: null };
+      const existing = byId.get(id) ?? {
+        blockId: id,
+        state: null,
+        proposer: e.proposer ?? null,
+        qc: e.qc ?? null,
+        rawHeader: e.rawHeader,
+      };
       // update state if advanced
       const prevRank = existing.state ? stateRank[existing.state] : 0;
       const nextRank = e.commitState ? stateRank[e.commitState] : 0;
       if (nextRank >= prevRank) existing.state = e.commitState ?? existing.state;
+      // Update consensus fields if they're present
+      if (e.proposer !== undefined) existing.proposer = e.proposer;
+      if (e.qc !== undefined) existing.qc = e.qc;
+      if (e.rawHeader !== undefined) existing.rawHeader = e.rawHeader;
       byId.set(id, existing);
       numToProposals.set(num, byId);
 
       // If this is a commitState update for an already emitted blockNumber, re-emit
       if (lastEmitted !== null && num <= lastEmitted) {
         const best = chooseCanonical(num);
-        if (best) onUpdate({ blockNumber: num, blockId: best.blockId, commitState: best.state });
+        if (best)
+          onUpdate({
+            blockNumber: num,
+            blockId: best.blockId,
+            commitState: best.state,
+            proposer: best.proposer ?? null,
+            qc: best.qc ?? null,
+            ...(best.rawHeader !== undefined && { rawHeader: best.rawHeader }),
+          });
         return;
       }
 

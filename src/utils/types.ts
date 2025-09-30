@@ -51,6 +51,19 @@ export interface EventProvider {
   ) => EventUnsubscribeFn;
 }
 
+export interface QuorumCertificate {
+  signers: Address[];
+  signatures: Hex[];
+}
+
+export interface ConsensusEventData {
+  eventType?: "VoteCast" | "BlockFinalized" | "BlockVerified" | "ProposalSubmitted" | null;
+  validator?: Address | null;
+  blockNumber?: bigint | null;
+  blockHash?: Hex | null;
+  signature?: Hex | null;
+}
+
 export interface ProviderLog {
   address: Address;
   topics: Hex[];
@@ -60,6 +73,10 @@ export interface ProviderLog {
   // Monad speculative execution extensions
   blockId?: string | null;
   commitState?: CommitState | null;
+  // Consensus event data (decoded from topics/data if this is a consensus event)
+  consensusEvent?: ConsensusEventData | null;
+  // Raw log for custom parsing
+  rawLog?: Record<string, any>;
 }
 
 export interface BlockHeaderEvent {
@@ -68,6 +85,11 @@ export interface BlockHeaderEvent {
   // Monad speculative execution extensions
   blockId?: string | null;
   commitState?: CommitState | null;
+  // Monad consensus data from block header
+  proposer?: Address | null;
+  qc?: QuorumCertificate | null;
+  // Preserve full raw header for custom parsing
+  rawHeader?: Record<string, any>;
 }
 
 export interface ObservedTransaction {
