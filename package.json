@@ -1,6 +1,6 @@
 {
   "name": "monopulse",
-  "version": "1.1.3",
+  "version": "1.2.0",
   "description": "MonoPulse SDK: Real-time Monad data with smart batching and multicall",
   "keywords": [
     "monad",
